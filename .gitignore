@@ -1,0 +1,24 @@
+# Angular
+.angular/
+dist/
+node_modules/
+out-tsc/
+package-lock.json
+
+# Environment (never commit real API keys)
+src/environments/environment.prod.ts
+
+# Editor
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/

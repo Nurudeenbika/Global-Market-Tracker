@@ -1,0 +1,223 @@
+<div class="dashboard">
+  <!-- Page Header -->
+  <div class="dashboard__header">
+    <div class="dashboard__title">
+      <h1>Crypto Markets</h1>
+      <p class="subtitle">
+        Auto-refreshes every {{ refreshInterval }}s &middot;
+        {{ marketState.filteredAssets().length }} assets
+      </p>
+    </div>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="filters">
+    <div class="filters__search">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        type="text"
+        placeholder="Search by name or symbol..."
+        class="search-input"
+        [formControl]="searchControl"
+        autocomplete="off"
+      />
+      @if (searchControl.value) {
+        <button class="search-clear" (click)="searchControl.setValue('')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      }
+    </div>
+
+    <div class="filters__categories">
+      @for (cat of categories; track cat.value) {
+        <button
+          class="category-btn"
+          [class.active]="marketState.selectedCategory() === cat.value"
+          (click)="setCategory(cat.value)"
+        >
+          {{ cat.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper">
+    <table class="market-table">
+      <thead>
+        <tr>
+          <th class="th-rank">
+            <button
+              class="sort-btn"
+              [class.active]="isSortActive('market_cap_rank')"
+              (click)="sort('market_cap_rank')"
+            >
+              # {{ getSortIcon('market_cap_rank') }}
+            </button>
+          </th>
+          <th class="th-name">Name</th>
+          <th class="th-price">
+            <button
+              class="sort-btn"
+              [class.active]="isSortActive('current_price')"
+              (click)="sort('current_price')"
+            >
+              Price {{ getSortIcon('current_price') }}
+            </button>
+          </th>
+          <th class="th-change">
+            <button
+              class="sort-btn"
+              [class.active]="isSortActive('price_change_percentage_24h')"
+              (click)="sort('price_change_percentage_24h')"
+            >
+              24h % {{ getSortIcon('price_change_percentage_24h') }}
+            </button>
+          </th>
+          <th class="th-mcap">
+            <button
+              class="sort-btn"
+              [class.active]="isSortActive('market_cap')"
+              (click)="sort('market_cap')"
+            >
+              Market Cap {{ getSortIcon('market_cap') }}
+            </button>
+          </th>
+          <th class="th-vol">
+            <button
+              class="sort-btn"
+              [class.active]="isSortActive('total_volume')"
+              (click)="sort('total_volume')"
+            >
+              Volume (24h) {{ getSortIcon('total_volume') }}
+            </button>
+          </th>
+          <th class="th-7d">7d Chart</th>
+          <th class="th-watch"></th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (marketState.isLoading() && marketState.assets().length === 0) {
+          @for (row of skeletonRows; track $index) {
+            <tr class="skeleton-row">
+              <td><gmt-skeleton width="24px" height="14px" /></td>
+              <td>
+                <div class="asset-name-cell">
+                  <gmt-skeleton width="28px" height="28px" [circle]="true" />
+                  <div>
+                    <gmt-skeleton width="80px" height="14px" />
+                    <gmt-skeleton width="40px" height="12px" />
+                  </div>
+                </div>
+              </td>
+              <td><gmt-skeleton width="90px" height="14px" /></td>
+              <td><gmt-skeleton width="60px" height="22px" /></td>
+              <td><gmt-skeleton width="100px" height="14px" /></td>
+              <td><gmt-skeleton width="90px" height="14px" /></td>
+              <td><gmt-skeleton width="100px" height="32px" /></td>
+              <td></td>
+            </tr>
+          }
+        } @else if (marketState.error()) {
+          <tr>
+            <td colspan="8" class="error-cell">
+              <div class="error-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p>{{ marketState.error() }}</p>
+                <button class="retry-btn" (click)="marketState.refresh()">Retry</button>
+              </div>
+            </td>
+          </tr>
+        } @else if (marketState.filteredAssets().length === 0) {
+          <tr>
+            <td colspan="8" class="empty-cell">
+              <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="11" cy="11" r="8"/>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <p>No assets match your search</p>
+              </div>
+            </td>
+          </tr>
+        } @else {
+          @for (asset of marketState.filteredAssets(); track trackByAssetId($index, asset)) {
+            <tr
+              class="asset-row"
+              [routerLink]="['/asset', asset.id]"
+              [class.watchlisted]="watchlistService.isWatched(asset.id)"
+            >
+              <td class="td-rank">{{ asset.market_cap_rank }}</td>
+              <td class="td-name">
+                <div class="asset-name-cell">
+                  <img
+                    [src]="asset.image"
+                    [alt]="asset.name"
+                    class="asset-icon"
+                    loading="lazy"
+                  />
+                  <div class="asset-info">
+                    <span class="asset-name">{{ asset.name }}</span>
+                    <span class="asset-symbol">{{ asset.symbol | uppercase }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="td-price">
+                <span
+                  class="price-value"
+                  [gmtPriceFlash]="asset.current_price"
+                >
+                  {{ asset.current_price | cryptoCurrency: marketState.selectedCurrency() }}
+                </span>
+              </td>
+              <td class="td-change">
+                <gmt-change-badge [value]="asset.price_change_percentage_24h" />
+              </td>
+              <td class="td-mcap">
+                {{ asset.market_cap | largeNumber: marketState.selectedCurrency() }}
+              </td>
+              <td class="td-vol">
+                {{ asset.total_volume | largeNumber: marketState.selectedCurrency() }}
+              </td>
+              <td class="td-chart">
+                @if (asset.sparkline_in_7d?.price?.length) {
+                  <gmt-sparkline
+                    [data]="asset.sparkline_in_7d!.price"
+                    [positive]="asset.price_change_percentage_24h >= 0"
+                    [width]="110"
+                    [height]="38"
+                  />
+                }
+              </td>
+              <td class="td-watch">
+                <button
+                  class="watch-btn"
+                  [class.active]="watchlistService.isWatched(asset.id)"
+                  (click)="toggleWatchlist($event, asset)"
+                  [title]="watchlistService.isWatched(asset.id) ? 'Remove from watchlist' : 'Add to watchlist'"
+                >
+                  <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    [attr.fill]="watchlistService.isWatched(asset.id) ? 'currentColor' : 'none'"
+                    stroke="currentColor"
+                  >
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

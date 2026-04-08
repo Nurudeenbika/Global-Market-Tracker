@@ -1,0 +1,205 @@
+<div class="detail">
+
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb">
+    <a routerLink="/dashboard" class="breadcrumb__link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Markets
+    </a>
+    @if (asset()) {
+      <span class="breadcrumb__sep">/</span>
+      <span class="breadcrumb__current">{{ asset()!.name }}</span>
+    }
+  </nav>
+
+  @if (loading()) {
+    <div class="detail__loading">
+      <div class="detail-header skeleton-header">
+        <gmt-skeleton width="48px" height="48px" [circle]="true" />
+        <div>
+          <gmt-skeleton width="160px" height="24px" />
+          <gmt-skeleton width="80px" height="16px" />
+        </div>
+      </div>
+      <gmt-skeleton width="100%" height="400px" />
+    </div>
+  } @else if (error()) {
+    <div class="error-state">
+      <p>{{ error() }}</p>
+      <a routerLink="/dashboard" class="back-btn">Back to Markets</a>
+    </div>
+  } @else {
+    @if (asset(); as a) {
+    <!-- Asset Header -->
+    <div class="detail__header">
+      <div class="asset-identity">
+        <img [src]="a.image.large" [alt]="a.name" class="asset-logo" />
+        <div>
+          <div class="asset-title">
+            <h1>{{ a.name }}</h1>
+            <span class="asset-symbol-badge">{{ a.symbol | uppercase }}</span>
+            <span class="rank-badge">#{{ a.market_cap_rank }}</span>
+          </div>
+          <div class="asset-price-row">
+            <span class="current-price">
+              {{ a.market_data.current_price[marketState.selectedCurrency()] | cryptoCurrency: marketState.selectedCurrency() }}
+            </span>
+            <gmt-change-badge
+              [value]="a.market_data.price_change_percentage_24h"
+              size="lg"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        @if (a.links.homepage[0]) {
+          <a
+            [href]="a.links.homepage[0]"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="link-btn"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            Website
+          </a>
+        }
+        <button
+          class="watchlist-btn"
+          [class.active]="isWatched()"
+          (click)="toggleWatchlist()"
+        >
+          <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            [attr.fill]="isWatched() ? 'currentColor' : 'none'"
+            stroke="currentColor"
+          >
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          {{ isWatched() ? 'Watchlisted' : 'Add to Watchlist' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Chart Section -->
+    <div class="chart-section">
+      <div class="chart-header">
+        <h2>Price Chart</h2>
+        <div class="range-buttons">
+          @for (range of chartRanges; track range.value) {
+            <button
+              class="range-btn"
+              [class.active]="selectedRange() === range.value"
+              (click)="loadChart(range.value)"
+            >
+              {{ range.label }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="chart-container" [class.loading]="chartLoading()">
+        @if (chartLoading()) {
+          <div class="chart-overlay">
+            <div class="chart-spinner"></div>
+          </div>
+        }
+        <canvas baseChart
+          [data]="chartData"
+          [options]="chartOptions"
+          type="line"
+        ></canvas>
+      </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="stat-label">Market Cap</span>
+        <span class="stat-value">
+          {{ a.market_data.market_cap[marketState.selectedCurrency()] | largeNumber: marketState.selectedCurrency() }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">24h Volume</span>
+        <span class="stat-value">
+          {{ a.market_data.total_volume[marketState.selectedCurrency()] | largeNumber: marketState.selectedCurrency() }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">24h High</span>
+        <span class="stat-value positive">
+          {{ a.market_data.high_24h[marketState.selectedCurrency()] | cryptoCurrency: marketState.selectedCurrency() }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">24h Low</span>
+        <span class="stat-value negative">
+          {{ a.market_data.low_24h[marketState.selectedCurrency()] | cryptoCurrency: marketState.selectedCurrency() }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Circulating Supply</span>
+        <span class="stat-value">
+          {{ a.market_data.circulating_supply | number: '1.0-0' }} {{ a.symbol | uppercase }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Max Supply</span>
+        <span class="stat-value">
+          {{ a.market_data.max_supply ? (a.market_data.max_supply | number: '1.0-0') + ' ' + (a.symbol | uppercase) : '∞' }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">All Time High</span>
+        <span class="stat-value">
+          {{ a.market_data.ath[marketState.selectedCurrency()] | cryptoCurrency: marketState.selectedCurrency() }}
+        </span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">All Time Low</span>
+        <span class="stat-value">
+          {{ a.market_data.atl[marketState.selectedCurrency()] | cryptoCurrency: marketState.selectedCurrency() }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Performance -->
+    <div class="performance-section">
+      <h2>Price Performance</h2>
+      <div class="performance-grid">
+        <div class="perf-row">
+          <span class="perf-label">24 Hours</span>
+          <gmt-change-badge [value]="a.market_data.price_change_percentage_24h" />
+        </div>
+        <div class="perf-row">
+          <span class="perf-label">7 Days</span>
+          <gmt-change-badge [value]="a.market_data.price_change_percentage_7d" />
+        </div>
+        <div class="perf-row">
+          <span class="perf-label">30 Days</span>
+          <gmt-change-badge [value]="a.market_data.price_change_percentage_30d" />
+        </div>
+        <div class="perf-row">
+          <span class="perf-label">1 Year</span>
+          <gmt-change-badge [value]="a.market_data.price_change_percentage_1y" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    @if (a.description.en) {
+      <div class="description-section">
+        <h2>About {{ a.name }}</h2>
+        <p class="description" [innerHTML]="a.description.en.split('. ').slice(0, 5).join('. ') + '.'"></p>
+      </div>
+    }
+  }
+}
+</div>
