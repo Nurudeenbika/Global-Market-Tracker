@@ -320,5 +320,3 @@ For production usage, register for a [CoinGecko API key](https://www.coingecko.c
 | `localStorage` quota exceeded | Call `watchlistService.clearAll()` or clear browser storage |
 
 ---
-
-*Built with Angular 17 · TypeScript · Chart.js · CoinGecko API*
